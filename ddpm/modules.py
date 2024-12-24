@@ -10,9 +10,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim
 from torch import Tensor
-import numpy as np 
+import numpy as np
 
 ModuleType = Union[str, Callable[..., nn.Module]]
+
 
 class SiLU(nn.Module):
     def forward(self, x):
@@ -30,7 +31,9 @@ def timestep_embedding(timesteps, dim, max_period=10000):
     """
     half = dim // 2
     freqs = torch.exp(
-        -math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half
+        -math.log(max_period)
+        * torch.arange(start=0, end=half, dtype=torch.float32)
+        / half
     ).to(device=timesteps.device)
     args = timesteps[:, None].float() * freqs[None]
     embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
@@ -38,15 +41,18 @@ def timestep_embedding(timesteps, dim, max_period=10000):
         embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
     return embedding
 
+
 def _is_glu_activation(activation: ModuleType):
     return (
         isinstance(activation, str)
-        and activation.endswith('GLU')
+        and activation.endswith("GLU")
         or activation in [ReGLU, GEGLU]
     )
 
+
 def _all_or_none(values):
     assert all(x is None for x in values) or all(x is not None for x in values)
+
 
 def reglu(x: Tensor) -> Tensor:
     """The ReGLU activation function from [1].
@@ -67,6 +73,7 @@ def geglu(x: Tensor) -> Tensor:
     a, b = x.chunk(2, dim=-1)
     return a * F.gelu(b)
 
+
 class ReGLU(nn.Module):
     """The ReGLU activation function from [shazeer2020glu].
     Examples:
@@ -80,6 +87,7 @@ class ReGLU(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return reglu(x)
+
 
 class GEGLU(nn.Module):
     """The GEGLU activation function from [shazeer2020glu].
@@ -95,18 +103,20 @@ class GEGLU(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return geglu(x)
 
+
 def _make_nn_module(module_type: ModuleType, *args) -> nn.Module:
     return (
         (
             ReGLU()
-            if module_type == 'ReGLU'
+            if module_type == "ReGLU"
             else GEGLU()
-            if module_type == 'GEGLU'
+            if module_type == "GEGLU"
             else getattr(nn, module_type)(*args)
         )
         if isinstance(module_type, str)
         else module_type(*args)
     )
+
 
 class MLP(nn.Module):
     """The MLP model used in [gorishniy2021revisiting].
@@ -160,7 +170,7 @@ class MLP(nn.Module):
         if isinstance(dropouts, float):
             dropouts = [dropouts] * len(d_layers)
         assert len(d_layers) == len(dropouts)
-        assert activation not in ['ReGLU', 'GEGLU']
+        assert activation not in ["ReGLU", "GEGLU"]
 
         self.blocks = nn.ModuleList(
             [
@@ -178,12 +188,12 @@ class MLP(nn.Module):
 
     @classmethod
     def make_baseline(
-        cls: Type['MLP'],
+        cls: Type["MLP"],
         d_in: int,
         d_layers: List[int],
         dropout: float,
         d_out: int,
-    ) -> 'MLP':
+    ) -> "MLP":
         """Create a "baseline" `MLP`.
         This variation of MLP was used in [gorishniy2021revisiting]. Features:
         * :code:`Activation` = :code:`ReLU`
@@ -206,14 +216,14 @@ class MLP(nn.Module):
         assert isinstance(dropout, float)
         if len(d_layers) > 2:
             assert len(set(d_layers[1:-1])) == 1, (
-                'if d_layers contains more than two elements, then'
-                ' all elements except for the first and the last ones must be equal.'
+                "if d_layers contains more than two elements, then"
+                " all elements except for the first and the last ones must be equal."
             )
         return MLP(
             d_in=d_in,
             d_layers=d_layers,  # type: ignore
             dropouts=dropout,
-            activation='ReLU',
+            activation="ReLU",
             d_out=d_out,
         )
 
@@ -223,6 +233,7 @@ class MLP(nn.Module):
             x = block(x)
         x = self.head(x)
         return x
+
 
 class ResNet(nn.Module):
     """The ResNet model used in [gorishniy2021revisiting].
@@ -359,7 +370,7 @@ class ResNet(nn.Module):
 
     @classmethod
     def make_baseline(
-        cls: Type['ResNet'],
+        cls: Type["ResNet"],
         *,
         d_in: int,
         n_blocks: int,
@@ -368,7 +379,7 @@ class ResNet(nn.Module):
         dropout_first: float,
         dropout_second: float,
         d_out: int,
-    ) -> 'ResNet':
+    ) -> "ResNet":
         """Create a "baseline" `ResNet`.
         This variation of ResNet was used in [gorishniy2021revisiting]. Features:
         * :code:`Activation` = :code:`ReLU`
@@ -390,8 +401,8 @@ class ResNet(nn.Module):
             d_hidden=d_hidden,
             dropout_first=dropout_first,
             dropout_second=dropout_second,
-            normalization='BatchNorm1d',
-            activation='ReLU',
+            normalization="BatchNorm1d",
+            activation="ReLU",
             d_out=d_out,
         )
 
@@ -402,13 +413,16 @@ class ResNet(nn.Module):
         x = self.head(x)
         return x
 
+
 class MLPClassifier(nn.Module):
-    def __init__(self, d_in, d_layers, num_classes, dropout, dim_t = 128, t_in=False):
+    def __init__(self, d_in, d_layers, num_classes, dropout, dim_t=128, t_in=False):
         super().__init__()
         self.t_in = t_in
         self.dim_t = dim_t
         self.num_classes = num_classes
-        self.mlp = MLP.make_baseline(d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=dim_t)
+        self.mlp = MLP.make_baseline(
+            d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=dim_t
+        )
 
         if num_classes > 2:
             self.d_out = num_classes
@@ -419,9 +433,7 @@ class MLPClassifier(nn.Module):
 
         if self.t_in:
             self.time_embed = nn.Sequential(
-                nn.Linear(dim_t, dim_t),
-                nn.SiLU(),
-                nn.Linear(dim_t, dim_t)
+                nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
             )
 
         self.head = nn.Linear(dim_t, self.d_out)
@@ -439,59 +451,62 @@ class MLPClassifier(nn.Module):
         else:
             return torch.sigmoid(x)
 
+
 class ResNetEncoder(nn.Module):
-    def __init__(self, d_in, n_blocks, d_main, d_hidden, dropout, d_out, dim_t = 128, t_in=False):
+    def __init__(
+        self, d_in, n_blocks, d_main, d_hidden, dropout, d_out, dim_t=128, t_in=False
+    ):
         super().__init__()
-        self.t_in = t_in 
+        self.t_in = t_in
         self.dim_t = dim_t
 
         if t_in:
             self.time_embed = nn.Sequential(
-                nn.Linear(dim_t, dim_t),
-                nn.SiLU(),
-                nn.Linear(dim_t, dim_t)
+                nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
             )
 
-        self.proj = nn.Linear(d_in, dim_t) 
+        self.proj = nn.Linear(d_in, dim_t)
 
         self.resnet = ResNet.make_baseline(
-                            d_in=dim_t, 
-                            n_blocks=n_blocks, 
-                            d_main=d_main, 
-                            d_hidden=d_hidden, 
-                            dropout_first=dropout, 
-                            dropout_second=dropout,
-                            d_out=dim_t)
+            d_in=dim_t,
+            n_blocks=n_blocks,
+            d_main=d_main,
+            d_hidden=d_hidden,
+            dropout_first=dropout,
+            dropout_second=dropout,
+            d_out=dim_t,
+        )
 
-        #self.head = nn.Linear(dim_t, d_out)
+        # self.head = nn.Linear(dim_t, d_out)
 
     def forward(self, x, t=None):
         x = self.proj(x)
         if t is not None and self.t_in:
             emb = self.time_embed(timestep_embedding(t, self.dim_t))
-            x = x + emb 
+            x = x + emb
         x = self.resnet(x)
-        #x = self.head(x)
+        # x = self.head(x)
         return x
 
+
 class MLPScorer(nn.Module):
-    def __init__(self, d_in, d_layers, dropout, dim_t = 128, t_in = False):
+    def __init__(self, d_in, d_layers, dropout, dim_t=128, t_in=False):
         super().__init__()
         self.dim_t = dim_t
-        self.t_in = t_in 
-        self.mlp = MLP.make_baseline(d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=1)
+        self.t_in = t_in
+        self.mlp = MLP.make_baseline(
+            d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=1
+        )
 
         self.proj = nn.Linear(d_in, dim_t)
         if t_in:
             self.time_embed = nn.Sequential(
-                nn.Linear(dim_t, dim_t),
-                nn.SiLU(),
-                nn.Linear(dim_t, dim_t)
+                nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
             )
-        #self.head = nn.Linear(dim_t, self.d_out)
+        # self.head = nn.Linear(dim_t, self.d_out)
 
     def forward(self, x, t=None):
-        #x = torch.cat((c, x), dim=1)
+        # x = torch.cat((c, x), dim=1)
         x = self.proj(x)
         if self.t_in and t is not None:
             emb = self.time_embed(timestep_embedding(t, self.dim_t))
@@ -500,10 +515,13 @@ class MLPScorer(nn.Module):
         x = torch.sigmoid(x)
         return x
 
+
 class TF_Predictor(nn.Module):
     def __init__(self, d_in, d_main, d_layers, dropout):
         super().__init__()
-        self.mlp = MLP.make_baseline(d_in=d_main, d_layers=d_layers, dropout=dropout, d_out=1)
+        self.mlp = MLP.make_baseline(
+            d_in=d_main, d_layers=d_layers, dropout=dropout, d_out=1
+        )
         self.proj = nn.Linear(d_in, d_main)
 
     def forward(self, x):
@@ -513,20 +531,20 @@ class TF_Predictor(nn.Module):
 
 
 class MLPEncoder(nn.Module):
-    def __init__(self, d_in, d_layers, d_out, dropout, dim_t = 128, t_in = False):
+    def __init__(self, d_in, d_layers, d_out, dropout, dim_t=128, t_in=False):
         super().__init__()
         self.dim_t = dim_t
-        self.t_in = t_in 
-        self.mlp = MLP.make_baseline(d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=d_out)
+        self.t_in = t_in
+        self.mlp = MLP.make_baseline(
+            d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=d_out
+        )
 
         self.proj = nn.Linear(d_in, dim_t)
         if t_in:
             self.time_embed = nn.Sequential(
-                nn.Linear(dim_t, dim_t),
-                nn.SiLU(),
-                nn.Linear(dim_t, dim_t)
+                nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
             )
-        #self.head = nn.Linear(dim_t, self.d_out)
+        # self.head = nn.Linear(dim_t, self.d_out)
 
     def forward(self, x, t=None):
         x = self.proj(x)
@@ -535,6 +553,7 @@ class MLPEncoder(nn.Module):
             x = x + emb
         x = self.mlp(x)
         return x
+
 
 # def compute_similarity(c, x, t, cond_encoder, data_encoder):
 #     c_features = cond_encoder(c, t)
@@ -548,6 +567,7 @@ class MLPEncoder(nn.Module):
 #     logits_per_x = logits_per_c.t()
 
 #     return logits_per_c, logits_per_x
+
 
 class CondScorer(nn.Module):
     def __init__(self, cond_encoder, data_encoder):
@@ -581,29 +601,32 @@ class CondScorer(nn.Module):
         similarity = c_features @ x_features.t()
         return similarity
 
+
 class MLPDiffusion(nn.Module):
-    def __init__(self, d_in, d_layers, dropout, dim_t = 128, cond_dim = 0):#num_classes=0, is_y_cond=False):
+    def __init__(
+        self, d_in, d_layers, dropout, dim_t=128, cond_dim=0
+    ):  # num_classes=0, is_y_cond=False):
         super().__init__()
         self.dim_t = dim_t
-        #self.num_classes = num_classes
-        self.is_cond = (cond_dim > 0)
+        # self.num_classes = num_classes
+        self.is_cond = cond_dim > 0
         self.cond_dim = cond_dim
 
         # d0 = rtdl_params['d_layers'][0]
 
-        self.mlp = MLP.make_baseline(d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=d_in)
+        self.mlp = MLP.make_baseline(
+            d_in=dim_t, d_layers=d_layers, dropout=dropout, d_out=d_in
+        )
 
         if self.is_cond:
-            #self.cond_emd = nn.Linear(self.cond_dim, dim_t)
+            # self.cond_emd = nn.Linear(self.cond_dim, dim_t)
             self.cond_embed = nn.Linear(self.cond_dim, dim_t)
-        
+
         self.proj = nn.Linear(d_in, dim_t)
         self.time_embed = nn.Sequential(
-            nn.Linear(dim_t, dim_t),
-            nn.SiLU(),
-            nn.Linear(dim_t, dim_t)
+            nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
         )
-    
+
     def forward(self, x, timesteps, cond=None):
         emb = self.time_embed(timestep_embedding(timesteps, self.dim_t))
         if self.is_cond and cond is not None:
@@ -611,33 +634,35 @@ class MLPDiffusion(nn.Module):
         x = self.proj(x) + emb
         return self.mlp(x)
 
+
 class ResNetDiffusion(nn.Module):
-    def __init__(self, d_in, n_blocks, d_main, d_hidden, dropout, dim_t = 128, cond_dim = 0):
+    def __init__(
+        self, d_in, n_blocks, d_main, d_hidden, dropout, dim_t=128, cond_dim=0
+    ):
         super().__init__()
         self.dim_t = dim_t
 
-        self.is_cond = (cond_dim > 0)
+        self.is_cond = cond_dim > 0
         self.cond_dim = cond_dim
 
         if self.is_cond:
             self.cond_embed = nn.Linear(self.cond_dim, dim_t)
 
         self.time_embed = nn.Sequential(
-            nn.Linear(dim_t, dim_t),
-            nn.SiLU(),
-            nn.Linear(dim_t, dim_t)
+            nn.Linear(dim_t, dim_t), nn.SiLU(), nn.Linear(dim_t, dim_t)
         )
 
-        self.proj = nn.Linear(d_in, dim_t) 
+        self.proj = nn.Linear(d_in, dim_t)
 
         self.resnet = ResNet.make_baseline(
-                            d_in=dim_t, 
-                            n_blocks=n_blocks, 
-                            d_main=d_main, 
-                            d_hidden=d_hidden, 
-                            dropout_first=dropout, 
-                            dropout_second=dropout,
-                            d_out=dim_t)
+            d_in=dim_t,
+            n_blocks=n_blocks,
+            d_main=d_main,
+            d_hidden=d_hidden,
+            dropout_first=dropout,
+            dropout_second=dropout,
+            d_out=dim_t,
+        )
 
         self.head = nn.Linear(dim_t, d_in)
 
@@ -654,10 +679,11 @@ class ResNetDiffusion(nn.Module):
     #     x = self.proj(x)
     #     if t is not None and self.t_in:
     #         emb = self.time_embed(timestep_embedding(t, self.dim_t))
-    #         x = x + emb 
+    #         x = x + emb
     #     x = self.resnet(x)
     #     x = self.head(x)
     #     return x
+
 
 # class ResNetDiffusion(nn.Module):
 #     def __init__(self, d_in, num_classes, rtdl_params, dim_t = 256):
@@ -672,13 +698,13 @@ class ResNetDiffusion(nn.Module):
 
 #         if self.num_classes > 0:
 #             self.label_emb = nn.Embedding(self.num_classes, dim_t)
-        
+
 #         self.time_embed = nn.Sequential(
 #             nn.Linear(dim_t, dim_t),
 #             nn.SiLU(),
 #             nn.Linear(dim_t, dim_t)
 #         )
-    
+
 #     def forward(self, x, timesteps, y=None):
 #         emb = self.time_embed(timestep_embedding(timesteps, self.dim_t))
 #         if y is not None and self.num_classes > 0:

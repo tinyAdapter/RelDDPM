@@ -5,6 +5,7 @@ import numpy as np
 from copy import deepcopy
 import time
 
+
 def update_ema(target_params, source_params, rate=0.999):
     """
     Update target parameters to be closer to those of source parameters using
@@ -16,32 +17,44 @@ def update_ema(target_params, source_params, rate=0.999):
     for targ, src in zip(target_params, source_params):
         targ.detach().mul_(rate).add_(src.detach(), alpha=1 - rate)
 
+
 class Trainer:
-    def __init__(self, diffusion, train_iter, lr, weight_decay, steps, save_path=None, num_checkpoints=1, device=torch.device('cuda:1')):
+    def __init__(
+        self,
+        diffusion,
+        train_iter,
+        lr,
+        weight_decay,
+        steps,
+        save_path=None,
+        num_checkpoints=1,
+        device=torch.device("cuda:1"),
+    ):
         self.diffusion = diffusion
         self.ema_model = deepcopy(self.diffusion._denoise_fn)
         for param in self.ema_model.parameters():
             param.detach_()
-        #self.n_dim = n_dim    
+        # self.n_dim = n_dim
         self.is_cond = self.diffusion._denoise_fn.is_cond
         if self.is_cond:
             print("Conditional Training!")
         self.train_iter = train_iter
         self.steps = steps
         self.init_lr = lr
-        self.optimizer = torch.optim.AdamW(self.diffusion.parameters(), lr=lr, weight_decay=weight_decay)
+        self.optimizer = torch.optim.AdamW(
+            self.diffusion.parameters(), lr=lr, weight_decay=weight_decay
+        )
         self.device = device
-        self.loss_history = pd.DataFrame(columns=['step','loss'])
+        self.loss_history = pd.DataFrame(columns=["step", "loss"])
         self.log_every = 100
         self.print_every = 500
         self.ema_every = 1000
-        self.step_per_check = steps//num_checkpoints
+        self.step_per_check = steps // num_checkpoints
         self.save_path = save_path
 
         if self.save_path is not None:
             os.makedirs(self.save_path, exist_ok=True)
             os.makedirs(os.path.join(self.save_path, "checkpoints/"), exist_ok=True)
-
 
     def _anneal_lr(self, step):
         frac_done = step / self.steps
@@ -67,7 +80,7 @@ class Trainer:
 
     def run_loop(self):
         step = 0
-        curr_loss= 0.0
+        curr_loss = 0.0
 
         curr_count = 0
         train_start = time.time()
@@ -80,27 +93,34 @@ class Trainer:
 
             batch_loss = self._run_step(x, cond)
 
-            #print(f"Step {step}:", (batch_loss_gauss + batch_loss_multi).data)
+            # print(f"Step {step}:", (batch_loss_gauss + batch_loss_multi).data)
             self._anneal_lr(step)
 
             curr_count += len(x)
             curr_loss += batch_loss.item() * len(x)
 
             if (step + 1) % self.log_every == 0:
-                loss = np.around(curr_loss/ curr_count, 4)
+                loss = np.around(curr_loss / curr_count, 4)
                 if (step + 1) % self.print_every == 0:
-                    print(f'Step {(step + 1)}/{self.steps} Loss: {loss}')
+                    print(f"Step {(step + 1)}/{self.steps} Loss: {loss}")
                 self.loss_history.loc[len(self.loss_history)] = [step + 1, loss]
                 curr_count = 0
                 curr_loss = 0.0
 
-            update_ema(self.ema_model.parameters(), self.diffusion._denoise_fn.parameters())
+            update_ema(
+                self.ema_model.parameters(), self.diffusion._denoise_fn.parameters()
+            )
 
             step += 1
             if step % self.step_per_check == 0 and self.save_path is not None:
-                torch.save(self.diffusion, os.path.join(self.save_path, f"checkpoints/diff_model_{step}.pt"))
+                torch.save(
+                    self.diffusion,
+                    os.path.join(self.save_path, f"checkpoints/diff_model_{step}.pt"),
+                )
         train_end = time.time()
 
-        self.loss_history.loc[len(self.loss_history)] = [step, train_end-train_start]
+        self.loss_history.loc[len(self.loss_history)] = [step, train_end - train_start]
         if self.save_path is not None:
-            self.loss_history.to_csv(os.path.join(self.save_path, "loss_history.csv"), index=None)
+            self.loss_history.to_csv(
+                os.path.join(self.save_path, "loss_history.csv"), index=None
+            )
