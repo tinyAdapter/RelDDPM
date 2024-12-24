@@ -63,18 +63,21 @@ class Trainer:
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
-    def _run_step(self, x, cond=None, epsilon=None):
+    def _step(self, x, cond=None):
         x = x.to(self.device)
         if self.is_cond and cond is not None:
             cond = cond.to(self.device)
+
         self.optimizer.zero_grad()
 
         loss = self.diffusion.compute_loss(x, cond)
         loss.backward()
+
         # for p in self.diffusion.parameters():
         # #     print(p)
         # #     print(p.grad)
         #      p.grad.clamp_(-0.1, 0.1)
+
         self.optimizer.step()
 
         return loss
@@ -82,9 +85,10 @@ class Trainer:
     def run_loop(self):
         step = 0
         curr_loss = 0.0
-
         curr_count = 0
+
         train_start = time.time()
+
         while step < self.steps:
             if self.is_cond:
                 x, cond = next(self.train_iter)
@@ -92,7 +96,7 @@ class Trainer:
                 x = next(self.train_iter)[0]
                 cond = None
 
-            batch_loss = self._run_step(x, cond)
+            batch_loss = self._step(x, cond)
 
             # print(f"Step {step}:", (batch_loss_gauss + batch_loss_multi).data)
             self._anneal_lr(step)
@@ -104,7 +108,9 @@ class Trainer:
                 loss = np.around(curr_loss / curr_count, 4)
                 if (step + 1) % self.print_every == 0:
                     print(f"Step {(step + 1)}/{self.steps} Loss: {loss}")
+
                 self.loss_history.loc[len(self.loss_history)] = [step + 1, loss]
+
                 curr_count = 0
                 curr_loss = 0.0
 
@@ -118,10 +124,12 @@ class Trainer:
                     self.diffusion,
                     os.path.join(self.save_path, f"checkpoints/diff_model_{step}.pt"),
                 )
+
         train_end = time.time()
 
         self.loss_history.loc[len(self.loss_history)] = [step, train_end - train_start]
+
         if self.save_path is not None:
             self.loss_history.to_csv(
-                os.path.join(self.save_path, "loss_history.csv"), index=None
+                os.path.join(self.save_path, "loss_history.csv"), index=False
             )

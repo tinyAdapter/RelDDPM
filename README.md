@@ -51,6 +51,7 @@ Run the code to generate synthetic data for minority class oversampling with the
 
 ```sh
 python main.py --task-name=oversampling --dataset-name=[dataset] --device=[GPU id] --save-name=[output file]
+python eval.py --task-name=oversampling --dataset-name=[dataset] --device=[GPU id] --save-name=[output file]
 ```
 
 The parameter "dataset" should be "default", "shoppers" or "weatherAUS".
@@ -59,6 +60,7 @@ For example:
 
 ```sh
 python main.py --task-name=oversampling --dataset-name=default --device=0 --save-name=default_output
+python eval.py --task-name=oversampling --dataset-name=default --device=0 --save-name=default_output
 ```
 
 #### Missing Tuple Completion
@@ -67,20 +69,7 @@ Run the code to generate synthetic data for missing tuple completion with the fo
 
 ```sh
 python main.py --task-name=completion --dataset-name=[dataset] --device=[GPU id] --save-name=[output file]
+python eval.py --task-name=completion --dataset-name=[dataset] --device=[GPU id] --save-name=[output file]
 ```
 
 The parameter "dataset" should be "heart", "airbnb" or "imdb".
-
-### Evaluation
-
-Run the code to evaluate the results of the minority class oversampling/missing tuple completion with the following command:
-
-```sh
-python eval.py --task-name=[task name] --dataset-name=[dataset] --device=[GPU id] --save-name=[output file]
-```
-
-To evaluate the performance of *minority class oversampling* on *default* dataset, assume the synthetic results are saved in *default_output*, the command is:
-
-```sh
-python eval.py --task-name=oversampling --dataset-name=default --device=0 --save-name=default_output
-```

@@ -9,11 +9,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import tqdm
-from pandas.api.types import is_bool_dtype, is_numeric_dtype, is_object_dtype
+from pandas.api.types import is_numeric_dtype, is_object_dtype
 from sklearn import metrics, preprocessing
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier
 from sqlalchemy import create_engine

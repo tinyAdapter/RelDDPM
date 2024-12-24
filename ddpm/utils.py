@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.profiler import record_function
 
 
 def sample_data_no_cond(sample_size, diff_model, data_wrapper):

@@ -1,16 +1,12 @@
 import json
-import os
 import pickle
-import random
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn.functional as F
 from pandas.api.types import is_numeric_dtype
-from scipy.interpolate import PchipInterpolator
 from sklearn.preprocessing import MinMaxScaler, QuantileTransformer, StandardScaler
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 def load_json(path):
@@ -245,130 +241,6 @@ class DataWrapper:
         reject_index = np.array(list(reject_index))
         # allow_sample = sample[allow_index, :]
         return allow_index, reject_index
-
-
-class MixDataWrapper:
-    def __init__(self, num_normalizer="quantile", seed=0):
-        self.num_normalizer = num_normalizer
-        self.seed = seed
-
-    def fit(dataframe):
-        self.raw_data = dataframe.values.copy()
-        self.raw_df = dataframe.copy()
-        self.raw_dim = dataframe.shape[1]
-        self.raw_columns = dataframe.columns
-        self.n = dataframe.shape[0]
-
-        self.num_normalizer = {}
-        self.cat_distinct_values = {}
-        self.cat_dims = []
-        self.num_dim = 0
-        self.columns = []
-        self.reorder_data = []
-
-    def __init__(self, dataframe, num_normalizer="quantile", seed=0):
-        self.raw_data = dataframe.values.copy()
-        self.raw_df = dataframe.copy()
-        self.raw_dim = dataframe.shape[1]
-        self.raw_columns = dataframe.columns
-        self.n = dataframe.shape[0]
-
-        self.num_normalizer = {}
-        self.cat_distinct_values = {}
-        self.cat_dims = []
-        self.num_dim = 0
-        self.columns = []
-        self.reorder_data = []
-        for i, col in enumerate(dataframe.columns):
-            if is_numeric_dtype(dataframe[col]):
-                # self.num_normalizer[col] = StandardScaler.fit(self.raw_data[:, i])
-                if num_normalizer == "quantile":
-                    self.num_normalizer[col] = QuantileTransformer(
-                        output_distribution="normal",
-                        n_quantiles=max(min(dataframe.shape[0] // 30, 1000), 10),
-                        subsample=1e9,
-                        random_state=seed,
-                    )
-                elif num_normalizer == "standard":
-                    self.num_normalizer[col] = StandardScaler()
-                self.num_normalizer[col].fit(self.raw_data[:, i].reshape(-1, 1))
-                self.columns.append(col)
-                self.reorder_data.append(self.raw_data[:, i].reshape(-1, 1))
-                self.num_dim += 1
-        for i, col in enumerate(dataframe.columns):
-            col_data = dataframe.loc[pd.notna(dataframe[col])][col]
-            if not is_numeric_dtype(dataframe[col]):
-                # dataframe[col] = dataframe[col].fillna("@#$%")
-                distinct_values = col_data.unique()
-                distinct_values.sort()
-                self.cat_distinct_values[col] = distinct_values
-                self.cat_dims.append(len(distinct_values))
-                self.columns.append(col)
-                self.reorder_data.append(self.raw_data[:, i].reshape(-1, 1))
-
-        self.cat_dims = np.array(self.cat_dims)
-        if len(self.cat_dims) == 0:
-            self.cat_dims = np.array([0])
-        self.reorder_data = np.concatenate(self.reorder_data, axis=1)
-        self.norm_data = []
-        for i, col in enumerate(self.columns):
-            if col in self.num_normalizer.keys():
-                self.norm_data.append(
-                    self.num_normalizer[col].transform(
-                        self.reorder_data[:, i].reshape(-1, 1).astype(np.float32)
-                    )
-                )
-            else:
-                self.norm_data.append(
-                    self.CatValsToNum(col, self.reorder_data[:, i]).reshape(-1, 1)
-                )
-        self.norm_data = np.concatenate(self.norm_data, axis=1)
-
-    def ReOrderColumns(self, data: pd.DataFrame):
-        ndf = pd.DataFrame([])
-        for col in self.raw_columns:
-            ndf[col] = data[col]
-        return ndf
-
-    def CatValsToNum(self, col, values):
-        num_values = np.zeros_like(values)
-        for i, val in enumerate(values):
-            if pd.isna(val):
-                num_values[i] = np.nan
-            else:
-                ind = np.where(self.cat_distinct_values[col] == val)
-                num_values[i] = ind[0][0]
-        return num_values.astype(np.float32)
-
-    def NumValsToCat(self, col, values):
-        cat_values = np.zeros_like(values).astype(object)
-        # print(col_name, values)
-        # values = np.clip(values, 0, len(self.all_distinct_values[col_name])-1)
-        for i, val in enumerate(values):
-            if pd.isna(val):
-                cat_values[i] = np.nan
-            else:
-                cat_values[i] = self.cat_distinct_values[col][int(val)]
-        return cat_values
-
-    def Reverse(self, data):
-        reverse_data = []
-        for i, col in enumerate(self.columns):
-            if col in self.num_normalizer.keys():
-                rev_data = self.num_normalizer[col].inverse_transform(
-                    data[:, i].reshape(-1, 1)
-                )
-                if (
-                    self.raw_df[col].dtype == np.int32
-                    or self.raw_df[col].dtype == np.int64
-                ):
-                    rev_data = np.round(rev_data)
-                reverse_data.append(rev_data)
-            else:
-                rev_data = self.NumValsToCat(col, data[:, i]).reshape(-1, 1)
-                reverse_data.append(rev_data)
-        reverse_data = np.concatenate(reverse_data, axis=1)
-        return reverse_data
 
 
 class TableDataset(Dataset):

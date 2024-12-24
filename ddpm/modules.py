@@ -3,7 +3,7 @@ Code was adapted from https://github.com/Yura52/rtdl
 """
 
 import math
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Callable, List, Type, Union
 
 import numpy as np
 import torch
@@ -109,9 +109,7 @@ def _make_nn_module(module_type: ModuleType, *args) -> nn.Module:
         (
             ReGLU()
             if module_type == "ReGLU"
-            else GEGLU()
-            if module_type == "GEGLU"
-            else getattr(nn, module_type)(*args)
+            else GEGLU() if module_type == "GEGLU" else getattr(nn, module_type)(*args)
         )
         if isinstance(module_type, str)
         else module_type(*args)
@@ -167,9 +165,14 @@ class MLP(nn.Module):
             `make_baseline` is the recommended constructor.
         """
         super().__init__()
-        if isinstance(dropouts, float):
-            dropouts = [dropouts] * len(d_layers)
-        assert len(d_layers) == len(dropouts)
+        
+        pp_dropouts: List[float] = []
+        if isinstance(dropouts, list):
+            pp_dropouts = dropouts
+        else:
+            pp_dropouts = [dropouts] * len(d_layers)
+
+        assert len(d_layers) == len(pp_dropouts)
         assert activation not in ["ReGLU", "GEGLU"]
 
         self.blocks = nn.ModuleList(
@@ -181,7 +184,7 @@ class MLP(nn.Module):
                     activation=activation,
                     dropout=dropout,
                 )
-                for i, (d, dropout) in enumerate(zip(d_layers, dropouts))
+                for i, (d, dropout) in enumerate(zip(d_layers, pp_dropouts))
             ]
         )
         self.head = nn.Linear(d_layers[-1] if d_layers else d_in, d_out)

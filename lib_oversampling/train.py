@@ -1,16 +1,12 @@
 import sys
 
 sys.path.append("../")
-import itertools
 import os
 import time
 
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
 
 import data_utils as du
 from ddpm import diffusion, modules, train
@@ -52,16 +48,14 @@ def diffuser_training(
     bs=4096,
 ):
     train_x = torch.from_numpy(train_x).float()
-    model = modules.MLPDiffusion(train_x.shape[1], d_hidden, drop_out)
-    model.to(device)
-    print("Model Initialization")
+    model = modules.MLPDiffusion(train_x.shape[1], d_hidden, drop_out).to(device)
+    print("Model initialized")
 
     diff_model = diffusion.GaussianDiffusion(
-        train_x.shape[1], model, device=device, num_timesteps=num_timesteps
-    )
-    diff_model.to(device)
+        train_x.shape[1], model, num_timesteps=num_timesteps, device=device,
+    ).to(device)
     diff_model.train()
-    print("Diffusion Initialization")
+    print("Diffusion initialized")
 
     ds = [train_x]
     dl = du.prepare_fast_dataloader(ds, batch_size=bs, shuffle=True)
@@ -114,10 +108,10 @@ def controller_training(
 
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.00001)
     sta = time.time()
+
     for step in range(steps):
         x, y = next(dl)
-        x = x.to(device)
-        y = y.to(device)
+        x, y = x.to(device), y.to(device)
         if n_classes == 2:
             y = y.squeeze()
         else:
@@ -142,9 +136,9 @@ def controller_training(
 
         if (step + 1) % 100 == 0 or step == 0:
             print(f"Step {step+1}/{steps} : Loss {loss.data}")
+
     end = time.time()
 
     model.to(torch.device("cpu"))
     model.eval()
-
     torch.save(model, save_path)

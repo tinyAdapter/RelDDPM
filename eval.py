@@ -2,12 +2,10 @@ import argparse
 import os
 import warnings
 
-import numpy as np
 import pandas as pd
 import torch
 
 import data_utils as du
-import ddpm
 import eval_utils as eu
 import lib_completion as lc
 
@@ -25,18 +23,16 @@ assert os.path.exists(save_dir)
 device = torch.device(f"cuda:{args.device}")
 
 if args.task_name == "oversampling":
-    result = pd.DataFrame(
-        [], columns=["Methods", "DT10", "DT30", "RF10", "RF20", "Adaboost", "LR", "MLP"]
-    )
+    data_path = "datasets/minority_class_oversampling"
 
-    config = du.load_json(f"datasets/minority_class_oversampling/dataset_info.json")[
+    config = du.load_json(os.path.join(data_path, "dataset_info.json"))[
         args.dataset_name
     ]
-    train_real = pd.read_csv(
-        f"datasets/minority_class_oversampling/{args.dataset_name}_train.csv"
-    )
-    test_data = pd.read_csv(
-        f"datasets/minority_class_oversampling/{args.dataset_name}_test.csv"
+    train_real = pd.read_csv(os.path.join(data_path, f"{args.dataset_name}_train.csv"))
+    test_data = pd.read_csv(os.path.join(data_path, f"{args.dataset_name}_test.csv"))
+
+    result = pd.DataFrame(
+        [], columns=["Methods", "DT10", "DT30", "RF10", "RF20", "Adaboost", "LR", "MLP"]
     )
 
     print("Evaluating the Identity ...")
@@ -69,12 +65,12 @@ if args.task_name == "oversampling":
 
 if args.task_name == "completion":
     if args.dataset_name == "heart":
-        schema = lc.schemas.HeartSchema("datasets/missing_tuple_completion/heart/")
+        data_path = "datasets/missing_tuple_completion/heart"
+
+        schema = lc.schemas.HeartSchema(data_path)
         incomplete_tables = ["cardio"]
         schema.load_setup(incomplete_tables, keep_rate=0.4)
-        queries = du.load_pickle(
-            "datasets/missing_tuple_completion/heart/aqp_queries.pkl"
-        )
+        queries = du.load_pickle(os.path.join(data_path, "aqp_queries.pkl"))
 
         real_data = schema.remove_pk(schema.ground_truth)
         incomplete_data = schema.remove_pk(schema.joined_data)
@@ -98,12 +94,12 @@ if args.task_name == "completion":
         du.save_json(data=results, path=os.path.join(save_dir, "results.json"))
 
     if args.dataset_name == "airbnb":
-        schema = lc.schemas.AirbnbSchema("datasets/missing_tuple_completion/airbnb/")
+        data_path = "datasets/missing_tuple_completion/airbnb"
+
+        schema = lc.schemas.AirbnbSchema(data_path)
         incomplete_tables = ["apartment"]
         schema.load_setup(incomplete_tables, keep_rate=0.4)
-        queries = du.load_pickle(
-            "datasets/missing_tuple_completion/airbnb/aqp_queries.pkl"
-        )
+        queries = du.load_pickle(os.path.join(data_path, "aqp_queries.pkl"))
 
         real_data = schema.remove_pk(schema.ground_truth)
         incomplete_data = schema.remove_pk(schema.joined_data)
@@ -127,13 +123,15 @@ if args.task_name == "completion":
         du.save_json(data=results, path=os.path.join(save_dir, "results.json"))
 
     if args.dataset_name == "imdb":
-        schema = lc.schemas.ImdbSchema("datasets/missing_tuple_completion/imdb/")
+        data_path = "datasets/missing_tuple_completion/imdb"
+
+        schema = lc.schemas.ImdbSchema(data_path)
         schema.load_setup(keep_rate=0.4)
         ma_queries = du.load_pickle(
-            "datasets/missing_tuple_completion/imdb/aqp_queries_movie_actor.pkl"
+            os.path.join(data_path, "aqp_queries_movie_actor.pkl")
         )
         md_queries = du.load_pickle(
-            "datasets/missing_tuple_completion/imdb/aqp_queries_movie_director.pkl"
+            os.path.join(data_path, "aqp_queries_movie_director.pkl")
         )
 
         real_data_ma = schema.remove_pk(schema.ma_ground_truth)
