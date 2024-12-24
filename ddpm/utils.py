@@ -1,10 +1,11 @@
 import time
+from inspect import isfunction
+
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 import torch.nn.functional as F
 from torch.profiler import record_function
-from inspect import isfunction
 
 
 def sample_data_no_cond(sample_size, diff_model, data_wrapper):

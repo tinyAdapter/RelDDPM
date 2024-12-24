@@ -2,9 +2,11 @@ import sys
 
 sys.path.append("../")
 import os
-from ddpm import modules, diffusion, train
+
 import torch
+
 import data_utils as du
+from ddpm import diffusion, modules, train
 from ddpm.resample import create_named_schedule_sampler
 
 

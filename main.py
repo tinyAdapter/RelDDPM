@@ -1,14 +1,15 @@
-import pandas as pd
-import numpy as np
-import lib_oversampling as lo
-import lib_completion as lc
-import ddpm
-import data_utils as du
-import os
-import torch
 import argparse
-
+import os
 import warnings
+
+import numpy as np
+import pandas as pd
+import torch
+
+import data_utils as du
+import ddpm
+import lib_completion as lc
+import lib_oversampling as lo
 
 warnings.filterwarnings("ignore")
 
@@ -108,10 +109,10 @@ if args.task_name == "oversampling":
     sample_data = torch.cat(sample_data, dim=0)
     sample_data = sample_data.cpu().numpy()
     sample_data = data_wrapper.Reverse(sample_data)
-    sample_data.to_csv(os.path.join(save_dir, "oversample_data.csv"), index=None)
+    sample_data.to_csv(os.path.join(save_dir, "oversample_data.csv"), index=False)
 
 
-elif args.task_name == "completion":
+if args.task_name == "completion":
     if args.dataset_name == "heart":
         schema = lc.schemas.HeartSchema("datasets/missing_tuple_completion/heart/")
         incomplete_tables = ["cardio"]
@@ -181,7 +182,7 @@ elif args.task_name == "completion":
             sample_data = pd.concat((cond_data, sample_data), axis=1)
             sample_data = sample_data[complete_data.columns]
             complete_data = pd.concat((complete_data, sample_data), axis=0)
-        complete_data.to_csv(os.path.join(save_dir, "complete_data.csv"), index=None)
+        complete_data.to_csv(os.path.join(save_dir, "complete_data.csv"), index=False)
 
     if args.dataset_name == "airbnb":
         schema = lc.schemas.AirbnbSchema("datasets/missing_tuple_completion/airbnb/")
@@ -334,7 +335,7 @@ elif args.task_name == "completion":
             sample_data = sample_data[complete_data.columns]
             complete_data = pd.concat((complete_data, sample_data), axis=0)
 
-        complete_data.to_csv(os.path.join(save_dir, "complete_data.csv"), index=None)
+        complete_data.to_csv(os.path.join(save_dir, "complete_data.csv"), index=False)
 
     if args.dataset_name == "imdb":
         schema = lc.schemas.ImdbSchema("datasets/missing_tuple_completion/imdb/")
@@ -441,7 +442,7 @@ elif args.task_name == "completion":
         sample_data = sample_data[ma_complete_data.columns]
         ma_complete_data = pd.concat((ma_complete_data, sample_data), axis=0)
         ma_complete_data.to_csv(
-            os.path.join(save_dir, "movie_actor_complete_data.csv"), index=None
+            os.path.join(save_dir, "movie_actor_complete_data.csv"), index=False
         )
 
         print("Generate director->movie ..")
@@ -463,5 +464,5 @@ elif args.task_name == "completion":
         sample_data = sample_data[md_complete_data.columns]
         md_complete_data = pd.concat((md_complete_data, sample_data), axis=0)
         md_complete_data.to_csv(
-            os.path.join(save_dir, "movie_director_complete_data.csv"), index=None
+            os.path.join(save_dir, "movie_director_complete_data.csv"), index=False
         )

@@ -1,24 +1,23 @@
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-import torch.optim as optim
-import pymysql as ms
-import tqdm
-from sqlalchemy import create_engine
-from pandas.api.types import is_object_dtype, is_bool_dtype, is_numeric_dtype
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn import metrics
+from copy import copy
+from enum import Enum
+
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-from sklearn import preprocessing
-from enum import Enum
-from copy import copy
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import AdaBoostClassifier
+import pymysql as ms
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import tqdm
+from pandas.api.types import is_bool_dtype, is_numeric_dtype, is_object_dtype
+from sklearn import metrics, preprocessing
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sqlalchemy import create_engine
+from torch.utils.data import DataLoader, TensorDataset
 
 
 class Aggregation(Enum):

@@ -1,15 +1,15 @@
-import pandas as pd
-import numpy as np
-import ddpm
-import lib_completion as lc
-import data_utils as du
-import eval_utils as eu
-import os
-import torch
 import argparse
-import pandas as pd
-
+import os
 import warnings
+
+import numpy as np
+import pandas as pd
+import torch
+
+import data_utils as du
+import ddpm
+import eval_utils as eu
+import lib_completion as lc
 
 warnings.filterwarnings("ignore")
 
@@ -65,7 +65,7 @@ if args.task_name == "oversampling":
     )
     result.loc[len(result)] = ["RelDDPM"] + f1_results
 
-    result.to_csv(os.path.join(save_dir, "f1_results.csv"), index=None)
+    result.to_csv(os.path.join(save_dir, "f1_results.csv"), index=False)
 
 if args.task_name == "completion":
     if args.dataset_name == "heart":

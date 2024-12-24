@@ -5,12 +5,12 @@ Code was adapted from https://github.com/Yura52/rtdl
 import math
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim
 from torch import Tensor
-import numpy as np
 
 ModuleType = Union[str, Callable[..., nn.Module]]
 

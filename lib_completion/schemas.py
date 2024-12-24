@@ -1,16 +1,20 @@
 import sys
 
 sys.path.append("../")
-import data_utils as du
+import os
+
 import numpy as np
 import pandas as pd
-import os
 import tqdm
+
+import data_utils as du
 
 
 class Schema:
     def __init__(self, directory):
+        print("Database loading ...")
         self.directory = directory
+        self.pk_names = []
 
     def remove_pk(self, table):
         remove_attrs = set(list(table.columns)).intersection(set(self.pk_names))
@@ -46,8 +50,7 @@ class Schema:
 
 class AirbnbSchema(Schema):
     def __init__(self, directory):
-        print("Database loading ...")
-        self.directory = directory
+        super().__init__(directory)
 
         self.apartment = pd.read_csv(os.path.join(self.directory, "apartment.csv"))
         self.neighborhoods = pd.read_csv(
@@ -182,8 +185,8 @@ class AirbnbSchema(Schema):
 
 class HeartSchema(Schema):
     def __init__(self, directory):
-        print("Database loading ...")
-        self.directory = directory
+        super().__init__(directory)
+
         self.patient = pd.read_csv(os.path.join(self.directory, "patient.csv"))
         self.cardio = pd.read_csv(os.path.join(self.directory, "cardio.csv"))
 
@@ -222,11 +225,11 @@ class HeartSchema(Schema):
         self.cond_patient = self.join_patient.loc[
             ~self.join_patient["pid"].isin(self.joined_data["pid"])
         ].drop(["pid"], axis=1)
-        self.cond_patient.index = np.arange(len(self.cond_patient))
+        self.cond_patient.index = pd.Index(np.arange(len(self.cond_patient)))
         self.cond_cardio = self.join_cardio.loc[
             ~self.join_cardio["pid"].isin(self.joined_data["pid"])
         ].drop(["pid"], axis=1)
-        self.cond_cardio.index = np.arange(len(self.cond_cardio))
+        self.cond_cardio.index = pd.Index(np.arange(len(self.cond_cardio)))
 
         self.join_patient = self.join_patient.drop(["pid"], axis=1)
         self.join_cardio = self.join_cardio.drop(["pid"], axis=1)
@@ -234,8 +237,7 @@ class HeartSchema(Schema):
 
 class ImdbSchema(Schema):
     def __init__(self, directory):
-        print("Database loading ...")
-        self.directory = directory
+        super().__init__(directory)
 
         self.actor = pd.read_csv(os.path.join(self.directory, "actor.csv"))
         self.movie_actor = pd.read_csv(os.path.join(self.directory, "movie_actor.csv"))
